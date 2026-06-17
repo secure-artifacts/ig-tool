@@ -1,0 +1,6 @@
+dist
+node_modules
+backup
+public
+global.d.ts
+tmp

@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # 创建 Release、上传产物
+  id-token: write # OIDC，用于构建溯源签名
+  attestations: write # 生成 build provenance attestation
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # 把 dist 内容打到 zip 根目录（manifest.json 在根，符合 Chrome Web Store 要求）
+      - name: Package extension
+        run: |
+          cd dist
+          zip -r "../ig-tool-${{ github.ref_name }}.zip" .
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ig-tool-${{ github.ref_name }}.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ig-tool-${{ github.ref_name }}.zip
+          generate_release_notes: true

@@ -1,0 +1,14 @@
+{
+  "importOrder": [
+    "^webextension",
+    "^react",
+    "^antd",
+    "^@antd",
+    "lodash-es",
+    "^@/",
+    "^[./]",
+    "(.*)"
+  ],
+  "importOrderSeparation": false,
+  "plugins": ["@trivago/prettier-plugin-sort-imports"]
+}
