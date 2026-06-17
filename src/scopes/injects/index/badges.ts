@@ -12,6 +12,14 @@ const mc = new MessagesInstance<InjectMessageType, BackgroundMessageType>(
 const BADGE_ATTR = "data-ig-duration-badge";
 const DEFAULT_COLOR = "#fff";
 
+//  徽标距容器顶部的偏移：首页(根路径)左上角有用户头像 logo,需下移避开;
+//  其他页面无遮挡,保持贴顶 8px
+const HOME_TOP = "44px";
+const DEFAULT_TOP = "8px";
+function badgeTop(): string {
+  return location.pathname === "/" ? HOME_TOP : DEFAULT_TOP;
+}
+
 //  已挂载监听的 video（用于规则变化时批量刷新颜色）
 const tracked = new Set<HTMLVideoElement>();
 //  来自设置页的着色规则
@@ -57,7 +65,7 @@ function ensureBadge(video: HTMLVideoElement): HTMLElement | null {
     Object.assign(badge.style, {
       position: "absolute",
       left: "8px",
-      top: "8px",
+      top: badgeTop(),
       padding: "1px 6px",
       borderRadius: "4px",
       background: "rgba(0, 0, 0, 0.75)",
@@ -82,6 +90,8 @@ function updateBadge(video: HTMLVideoElement) {
   const { duration } = video;
   badge.textContent = formatDuration(duration);
   badge.style.color = colorFor(duration);
+  //  SPA 切换首页/其他页面时同步顶部偏移
+  badge.style.top = badgeTop();
 }
 
 //  规则变化后，重新着色所有仍在页面中的视频徽标
