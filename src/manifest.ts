@@ -1,5 +1,5 @@
 import packageJson from "../package.json";
-import { hostMatches } from "./const";
+import { hostMatches, sheetHostMatches } from "./const";
 import { defineManifest } from "@crxjs/vite-plugin";
 
 const { version, description } = packageJson;
@@ -31,7 +31,7 @@ export default defineManifest(async () => ({
     type: "module",
   },
   //  "sidePanel" 启用侧边栏
-  permissions: ["tabs", "scripting", "storage", "sidePanel"],
+  permissions: ["tabs", "scripting", "storage", "sidePanel", "alarms"],
   options_page: "src/scopes/options/index.html",
   //  侧边栏入口
   side_panel: {
@@ -45,7 +45,8 @@ export default defineManifest(async () => ({
     //          即可让点击图标直接打开侧边栏
     default_popup: "src/scopes/popup/index.html",
   },
-  host_permissions: hostMatches,
+  //  instagram 用于内容脚本注入；docs.google.com / googleusercontent 用于抓取表格 CSV
+  host_permissions: [...hostMatches, ...sheetHostMatches],
   icons: {
     "16": "assets/logo-16.png",
     "19": "assets/logo-19.png",

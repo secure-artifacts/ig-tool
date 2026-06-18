@@ -1,3 +1,4 @@
+import { useAutoRefresh } from "./hooks/useAutoRefresh";
 import { useMessages } from "./hooks/useMessages";
 import { extId, hostMatches } from "@/const";
 import { SchemaType, schema } from "@/schema/index";
@@ -17,6 +18,7 @@ injectExtensionData({
 });
 useAutoFillBuckets<SchemaType>(schema);
 useMessages();
+useAutoRefresh();
 
 chrome.scripting.registerContentScripts([
   {

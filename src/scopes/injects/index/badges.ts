@@ -1,16 +1,16 @@
-import { extId } from "@/const";
-import { BackgroundMessageType, InjectMessageType } from "@/messageType";
-import { ColorRule } from "@/schema/settings";
-import { MessagesInstance } from "@webextkits/messages-center/inject";
+import {
+  BADGE_DEFAULT_COLOR,
+  ColorRule,
+  DEFAULT_FONT_SIZE,
+  resolveColor,
+} from "@/schema/settings";
+import { appendLaterPill } from "./laterButton";
+import { postIdForVideo } from "./postId";
+import { onSettings } from "./settingsStore";
 import { formatDuration } from "./videos";
 
-const mc = new MessagesInstance<InjectMessageType, BackgroundMessageType>(
-  extId,
-  true,
-);
-
 const BADGE_ATTR = "data-ig-duration-badge";
-const DEFAULT_COLOR = "#fff";
+const DEFAULT_COLOR = BADGE_DEFAULT_COLOR;
 
 //  徽标距容器顶部的偏移：首页(根路径)左上角有用户头像 logo,需下移避开;
 //  其他页面无遮挡,保持贴顶 8px
@@ -24,23 +24,14 @@ function badgeTop(): string {
 const tracked = new Set<HTMLVideoElement>();
 //  来自设置页的着色规则
 let colorRules: ColorRule[] = [];
+//  来自设置页的徽标字体大小（px）
+let fontSize = DEFAULT_FONT_SIZE;
+//  来自表格、需要打勾标记的帖子 ID 集合
+let markedIds = new Set<string>();
 
-//  按规则顺序返回首个命中的颜色，未命中用默认白色
+//  按规则顺序返回首个命中（且启用）规则的颜色，未命中用默认白色
 function colorFor(duration: number): string {
-  if (!Number.isFinite(duration)) return DEFAULT_COLOR;
-
-  for (const rule of colorRules) {
-    const hit =
-      (rule.op === "lt" && duration < rule.seconds) ||
-      (rule.op === "gt" && duration > rule.seconds) ||
-      (rule.op === "eq" && Math.floor(duration) === rule.seconds) ||
-      (rule.op === "between" &&
-        rule.secondsMax != null &&
-        duration >= rule.seconds &&
-        duration <= rule.secondsMax);
-    if (hit) return rule.color;
-  }
-  return DEFAULT_COLOR;
+  return resolveColor(colorRules, duration).color;
 }
 
 //  在 video 父容器左上角创建/获取时长徽标
@@ -70,8 +61,9 @@ function ensureBadge(video: HTMLVideoElement): HTMLElement | null {
       borderRadius: "4px",
       background: "rgba(0, 0, 0, 0.75)",
       color: DEFAULT_COLOR,
-      fontSize: "12px",
-      lineHeight: "18px",
+      fontSize: `${fontSize}px`,
+      //  用无单位行高，字体变化时高度随之缩放
+      lineHeight: "1.4",
       fontWeight: "600",
       fontFamily: "system-ui, -apple-system, sans-serif",
       pointerEvents: "none",
@@ -88,10 +80,32 @@ function updateBadge(video: HTMLVideoElement) {
   if (!badge) return;
 
   const { duration } = video;
+  //  textContent 会清空原有子节点，需在此之后再追加对勾
   badge.textContent = formatDuration(duration);
   badge.style.color = colorFor(duration);
+  //  字体大小可能在设置页被调整，每次刷新时同步
+  badge.style.fontSize = `${fontSize}px`;
   //  SPA 切换首页/其他页面时同步顶部偏移
   badge.style.top = badgeTop();
+
+  //  命中表格链接的帖子，在时间后面追加一个绿底白勾的小标签，醒目可辨
+  const id = markedIds.size > 0 ? postIdForVideo(video) : null;
+  if (id && markedIds.has(id)) {
+    const check = document.createElement("span");
+    check.textContent = "✓";
+    Object.assign(check.style, {
+      marginLeft: "5px",
+      padding: "0 5px",
+      borderRadius: "4px",
+      background: "#52c41a",
+      color: "#fff",
+      fontWeight: "700",
+    } as Partial<CSSStyleDeclaration>);
+    badge.appendChild(check);
+  }
+
+  //  时间（及对勾）之后追加「稍后处理」小标签
+  appendLaterPill(badge, video);
 }
 
 //  规则变化后，重新着色所有仍在页面中的视频徽标
@@ -134,15 +148,11 @@ export function mountDurationBadges(): () => void {
     requestAnimationFrame(scan);
   };
 
-  //  拉取初始规则，并监听设置页的实时变更
-  mc.send("readColorRules")
-    .then((rules) => {
-      colorRules = rules ?? [];
-      refreshAll();
-    })
-    .catch(() => {});
-  mc.on("colorRulesChanged", (rules) => {
-    colorRules = rules ?? [];
+  //  订阅共享设置：着色规则 / 字体大小 / 命中标记变化时实时重绘
+  onSettings((settings) => {
+    colorRules = settings.colorRules ?? [];
+    fontSize = settings.fontSize ?? DEFAULT_FONT_SIZE;
+    markedIds = new Set(settings.markedIds ?? []);
     refreshAll();
   });
 
