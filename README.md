@@ -16,9 +16,6 @@
 | --------------------------------------- | ------------------------------------------ |
 | ![设置页](docs/screenshot-settings.png) | ![稍后处理](docs/screenshot-sidepanel.png) |
 
-> 首页与稍后处理截图请分别放到 `docs/screenshot-home.png`
-> 和 `docs/screenshot-sidepanel.png` 后即可正常显示。
-
 # usage
 
 ```shell
